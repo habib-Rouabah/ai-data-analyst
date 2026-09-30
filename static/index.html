@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI Data Analyst</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; background: #0f172a; color: #e2e8f0; }
+    .container { max-width: 860px; margin: 0 auto; padding: 32px 20px; }
+    h1 { font-weight: 700; }
+    .subtitle { color: #94a3b8; margin-top: -8px; }
+    .box { display: flex; gap: 10px; margin: 24px 0; }
+    input { flex: 1; padding: 12px 14px; border-radius: 8px; border: 1px solid #334155; background: #1e293b; color: #e2e8f0; font-size: 15px; }
+    button { padding: 12px 18px; border: 0; border-radius: 8px; background: #38bdf8; color: #0f172a; font-weight: 600; cursor: pointer; }
+    button:disabled { opacity: 0.5; cursor: default; }
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 18px; margin-top: 18px; }
+    .label { color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+    pre { background: #0f172a; border-radius: 8px; padding: 12px; overflow-x: auto; color: #7dd3fc; }
+    img { max-width: 100%; border-radius: 8px; margin-top: 10px; }
+    .samples span { display: inline-block; background: #334155; border-radius: 999px; padding: 6px 12px; margin: 4px 6px 0 0; cursor: pointer; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>AI Data Analyst</h1>
+    <p class="subtitle">Pose une question sur les données e-commerce, en langage naturel.</p>
+
+    <div class="box">
+      <input id="question" placeholder="Ex: Quelles sont les 5 catégories les plus rentables ?" />
+      <button id="send">Analyser</button>
+    </div>
+
+    <div class="samples">
+      <span>Quel produit a généré le plus de chiffre d'affaires en 2025 ?</span>
+      <span>Montre-moi les 5 catégories les plus rentables.</span>
+      <span>Quel est le chiffre d'affaires mensuel en 2025 ?</span>
+    </div>
+
+    <div id="output"></div>
+  </div>
+
+  <script>
+    const input = document.getElementById("question");
+    const button = document.getElementById("send");
+    const output = document.getElementById("output");
+
+    document.querySelectorAll(".samples span").forEach((chip) => {
+      chip.addEventListener("click", () => { input.value = chip.textContent; ask(); });
+    });
+
+    button.addEventListener("click", ask);
+    input.addEventListener("keydown", (e) => { if (e.key === "Enter") ask(); });
+
+    async function ask() {
+      const question = input.value.trim();
+      if (!question) return;
+      button.disabled = true;
+      output.innerHTML = '<div class="card">Analyse en cours…</div>';
+      try {
+        const response = await fetch("/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question })
+        });
+        const data = await response.json();
+        render(data);
+      } catch (err) {
+        output.innerHTML = '<div class="card">Erreur : ' + err + '</div>';
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    function render(data) {
+      let html = '';
+      html += '<div class="card"><div class="label">Réponse</div><div>' + escapeHtml(data.answer || '') + '</div></div>';
+      if (data.chart_path) {
+        html += '<div class="card"><div class="label">Graphique</div><img src="/' + data.chart_path + '" /></div>';
+      }
+      html += '<div class="card"><div class="label">Requête SQL (' + data.row_count + ' lignes)</div><pre>' + escapeHtml(data.sql || '') + '</pre></div>';
+      output.innerHTML = html;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>
